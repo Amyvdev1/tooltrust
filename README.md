@@ -28,6 +28,6 @@ An agent can only be as safe and predictable as the tools it is allowed to call.
 ## Evidence boundary
 All execution is simulated. ToolTrust never calls external systems. A production system would add signed tool registries, policy-as-code, identity-aware permissions, durable audit logs, sandbox execution, secret handling, versioned schemas, and model-specific evaluation suites.
 
-## CI setup status
-The automated GitHub Actions workflow is pending upload authorization. The tests are included and can be run locally with python -m pytest. No passing GitHub CI run is claimed.
+## Continuous integration
+The Verify workflow runs the test suite and Python compilation on Python 3.12 for pushes to main and pull requests. It has read-only repository permissions. Run the tests locally with `python -m pytest`.
 
