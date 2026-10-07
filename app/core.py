@@ -3,6 +3,25 @@ from __future__ import annotations
 from dataclasses import dataclass, asdict
 from typing import Any
 import re
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import SchemaError
+from referencing import Registry
+from referencing.exceptions import NoSuchResource, Unresolvable
+
+
+def _deny_remote_reference(uri):
+    raise NoSuchResource(ref=uri)
+
+
+def parameter_validator(tool):
+    schema = tool.get('parameters', {})
+    if not isinstance(schema, dict):
+        raise ValueError('parameters must be a JSON Schema object')
+    try:
+        Draft202012Validator.check_schema(schema)
+    except SchemaError as exc:
+        raise ValueError('Invalid parameter schema: ' + exc.message) from exc
+    return Draft202012Validator(schema, registry=Registry(retrieve=_deny_remote_reference))
 
 SEVERITY_PENALTY={"critical":24,"high":14,"medium":7,"low":3}
 RISK_LEVELS={"read-only":1,"reversible-write":2,"irreversible-write":3,"external-side-effect":4}
@@ -26,6 +45,7 @@ def classify_risk(tool:dict[str,Any])->str:
 
 
 def evaluate_tool(tool:dict[str,Any])->dict[str,Any]:
+    parameter_validator(tool)
     findings=[]
     name=str(tool.get('name') or '')
     description=str(tool.get('description') or '')
@@ -83,14 +103,20 @@ def confirmation_preview(tool:dict[str,Any],risk:str|None=None)->dict[str,Any]:
 
 
 def replay_call(tool:dict[str,Any],arguments:dict[str,Any],confirmed:bool=False,permissions:list[str]|None=None)->dict[str,Any]:
+    validator = parameter_validator(tool)
     report=evaluate_tool(tool); policy=report['execution_policy']; permissions=set(permissions or [])
     missing=[p for p in policy['required_permissions'] if p not in permissions]
     trace=[{'stage':'schema_review','status':'pass' if report['category_scores']['schema']>=60 else 'warn'}]
     schema=tool.get('parameters') or {}; props=schema.get('properties') or {}; required=set(schema.get('required') or [])
     missing_args=[x for x in required if x not in arguments]
     unknown_args=[x for x in arguments if x not in props]
-    if missing_args or unknown_args:
-        trace.append({'stage':'argument_validation','status':'fail','missing':sorted(missing_args),'unknown':sorted(unknown_args)})
+    try:
+        errors = [{'path': '/'.join(str(p) for p in error.absolute_path), 'message': error.message}
+                  for error in validator.iter_errors(arguments)]
+    except Unresolvable as exc:
+        errors = [{'path': '', 'message': 'Schema reference cannot be resolved locally; external fetching is disabled.'}]
+    if missing_args or unknown_args or errors:
+        trace.append({'stage':'argument_validation','status':'fail','missing':sorted(missing_args),'unknown':sorted(unknown_args),'errors':errors})
         return {'executed':False,'status':'validation_failed','trace':trace,'report':report}
     trace.append({'stage':'argument_validation','status':'pass'})
     if missing:

@@ -21,3 +21,23 @@ def test_replay_executes_after_checks():
     assert d['executed'] is True
 
 def test_heuristic_risk_classification(): assert classify_risk({'name':'delete_customer','description':'Delete customer record permanently'})=='irreversible-write'
+
+def test_replay_rejects_wrong_type_and_enum():
+    tool=safe_tool()
+    tool['parameters']['properties']['demo_id']['enum']=['d1']
+    for value in (123, True, 'unknown'):
+        result=replay_call(tool,{'demo_id':value},confirmed=True,permissions=['demos:write'])
+        assert result['status']=='validation_failed' and result['executed'] is False
+        assert result['trace'][-1]['errors']
+
+def test_nested_schema_constraints_are_checked():
+    tool=safe_tool()
+    tool['parameters']['properties']['demo_id']={'type':'object','properties':{'count':{'type':'integer','minimum':1}},'required':['count']}
+    result=replay_call(tool,{'demo_id':{'count':0}},confirmed=True,permissions=['demos:write'])
+    assert result['status']=='validation_failed'
+
+def test_external_schema_references_are_not_fetched():
+    tool=safe_tool()
+    tool['parameters']['properties']['demo_id']={'$ref':'https://example.invalid/schema'}
+    result=replay_call(tool,{'demo_id':'d1'},confirmed=True,permissions=['demos:write'])
+    assert result['status']=='validation_failed'

@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import Any
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -15,6 +15,10 @@ def home(): return FileResponse(BASE/'static'/'index.html')
 @app.get('/health')
 def health(): return {'status':'ok','service':'tooltrust','version':'1.0.0'}
 @app.post('/api/evaluate')
-def evaluate(tool:dict[str,Any]): return evaluate_tool(tool)
+def evaluate(tool:dict[str,Any]):
+    try: return evaluate_tool(tool)
+    except ValueError as exc: raise HTTPException(422,str(exc)) from exc
 @app.post('/api/replay')
-def replay(payload:Replay): return replay_call(payload.tool,payload.arguments,payload.confirmed,payload.permissions)
+def replay(payload:Replay):
+    try: return replay_call(payload.tool,payload.arguments,payload.confirmed,payload.permissions)
+    except ValueError as exc: raise HTTPException(422,str(exc)) from exc
