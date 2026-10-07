@@ -1,0 +1,39 @@
+{
+  "name": "cancel_demo",
+  "description": "Cancel one scheduled customer demo and update the external scheduling record after an explicit human review step.",
+  "risk": "external-side-effect",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "demo_id": {
+        "type": "string",
+        "description": "Stable identifier for the scheduled demo that will be cancelled."
+      },
+      "reason": {
+        "type": "string",
+        "description": "Human-readable reason that will be recorded with the cancellation."
+      }
+    },
+    "required": [
+      "demo_id",
+      "reason"
+    ]
+  },
+  "permissions": [
+    "demos:write"
+  ],
+  "requires_confirmation": true,
+  "idempotent": true,
+  "side_effects": "Changes the scheduled demo status in the external system.",
+  "examples": [
+    {
+      "demo_id": "demo_42",
+      "reason": "Customer requested reschedule"
+    }
+  ],
+  "error_contract": {
+    "code": "conflict",
+    "message": "Demo cannot be cancelled",
+    "next_action": "Refresh the current demo state and retry only if still scheduled"
+  }
+}

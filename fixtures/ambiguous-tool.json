@@ -1,0 +1,12 @@
+{
+  "name": "DoThing",
+  "description": "Does something.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "mode": {
+        "type": "string"
+      }
+    }
+  }
+}

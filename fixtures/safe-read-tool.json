@@ -1,0 +1,33 @@
+{
+  "name": "get_order_status",
+  "description": "Read the current status of one order without changing any external record or triggering side effects.",
+  "risk": "read-only",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "order_id": {
+        "type": "string",
+        "description": "Stable order identifier returned by the order service."
+      }
+    },
+    "required": [
+      "order_id"
+    ]
+  },
+  "permissions": [
+    "orders:read"
+  ],
+  "requires_confirmation": false,
+  "idempotent": true,
+  "side_effects": "",
+  "examples": [
+    {
+      "order_id": "ord_123"
+    }
+  ],
+  "error_contract": {
+    "code": "not_found",
+    "message": "Order not found",
+    "next_action": "Verify the order identifier"
+  }
+}
